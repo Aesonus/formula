@@ -1,0 +1,12 @@
+<#if licenseFirst??>
+${licenseFirst}
+</#if>
+${licensePrefix}This file is part of the aesonus/formula package
+${licensePrefix}
+${licensePrefix} (c) Cory Laughlin <corylcomposinger@gmail.com>
+${licensePrefix}
+${licensePrefix}For full copyright and license information, please view the LICENSE
+${licensePrefix}file that was distributed with this source code
+<#if licenseLast??>
+${licenseLast}
+</#if>

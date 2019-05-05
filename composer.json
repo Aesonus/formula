@@ -1,0 +1,23 @@
+{
+    "name": "aesonus/formula",
+    "description": "Library to solve formulas with given variable data",
+    "license": "MIT",
+    "authors": [
+        {
+            "name": "Aesonus",
+            "email": "corylcomposinger@gmail.com"
+        }
+    ],
+    "require": {
+        "php": "^7.2"
+    },
+    "require-dev": {
+        "aesonus/test-lib": "^3.1.2"
+    },
+    "autoload": {
+        "psr-4": {
+            "Aesonus\\Formula\\": "src/",
+            "Aesonus\\Tests\\": "tests/"
+        }
+    }
+}
