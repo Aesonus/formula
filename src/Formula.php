@@ -10,21 +10,33 @@
 
 namespace Aesonus\Formula;
 
+use Aesonus\Formula\Contracts\FormulaInterface;
+use Aesonus\Formula\Contracts\FormulaParserInterface;
+
 /**
  * Description of Formula
  *
  * @author Aesonus <corylcomposinger at gmail.com>
  */
-class Formula implements Contracts\FormulaInterface
+class Formula implements FormulaInterface
 {
     protected $variables = [];
     protected $originalFormula;
-    private $pregFlag;
+    protected $parser;
+    protected $operations = [];
 
-    public function __construct(array $variables = [])
-    {
+    public function __construct(
+        FormulaParserInterface $parser,
+        array $variables = []
+    ) {
         $this->variables = [];
-        $this->pregFlag = PREG_SPLIT_NO_EMPTY | PREG_SPLIT_DELIM_CAPTURE;
+        $this->parser = $parser;
+        $this->operations = [
+            '+' => AddOperation::class,
+            '-' => SubtractOperation::class,
+            '*' => MultiplyOperation::class,
+            '/' => DivideOperation::class,
+        ];
     }
 
     public function solveFormula(string $formula, array $variables = array()): ?float
@@ -58,26 +70,10 @@ class Formula implements Contracts\FormulaInterface
 
     private function parseParenthesis(string $formula)
     {
-        $open = '(';
-        $close = ')';
-        $parenthesis = [];
-        $offset = 0;
-
-        while (($pos = strpos($formula, $open, $offset)) !== false) {
-            $nextOpen = strpos($formula, $open, $pos + 1);
-            $nextClose = strpos($formula, $close, $pos + 1);
-            if ($nextClose === false) {
-                throw new \InvalidArgumentException(__METHOD__ . 'Formula is missing closing parenthesis');
-            }
-            $offset = $pos + 1;
-            if (($nextOpen === false ? 99999 : $nextOpen)  > $nextClose) {
-                $parenthesis[] = substr($formula, $pos + 1, $nextClose - $offset);
-            }
-        }
-        return $parenthesis;
+        return $this->parser->parseParenthesis($formula);
     }
 
-    private function solveAdds(array $adds)
+    protected function solveAdds(array $adds)
     {
         $solved = array_shift($adds);
         while ($operator = array_shift($adds)) {
@@ -87,20 +83,14 @@ class Formula implements Contracts\FormulaInterface
             if ($this->containsOperations($solved)) {
                 $mults = $this->parseMult($solved);
                 $result = $this->solveMults($mults);
-                array_unshift($adds,$operator, $operand);
+                array_unshift($adds, $operator, $operand);
                 $solved = $result;
             } elseif ($this->containsOperations($operand)) {
                 $mults = $this->parseMult($operand);
                 $result = $this->solveMults($mults);
                 array_push($adds, $operator, $result);
-            } elseif ($operator === '+') {
-                $op = new AddOperation();
-                $op->setOperands($solved, $operand);
-                $solved = $op->solve($this->variables);
-            } elseif ($operator === '-') {
-                $op = new SubtractOperation();
-                $op->setOperands($solved, $operand);
-                $solved = $op->solve($this->variables);
+            } else {
+                $solved = $this->solveOperation($operator, $solved, $operand);
             }
         }
         if ($this->containsOperations($solved)) {
@@ -111,7 +101,7 @@ class Formula implements Contracts\FormulaInterface
         }
     }
 
-    private function solveMults(array $mults)
+    protected function solveMults(array $mults)
     {
         $solved = array_shift($mults);
         while ($operator = array_shift($mults)) {
@@ -119,22 +109,16 @@ class Formula implements Contracts\FormulaInterface
                 $operand = array_shift($mults);
             }
             if ($this->containsOperations($solved)) {
-//                $mults = $this->parseMult($solved);
-//                $result = $this->solveMults($mults);
-//                array_unshift($adds,$operator, $operand);
-//                $solved = $result;
+                $exps = $this->parseExp($solved);
+                $result = $this->solveExps($exps);
+                array_unshift($mults, $operator, $operand);
+                $solved = $result;
             } elseif ($this->containsOperations($operand)) {
-//                $mults = $this->parseMult($operand);
-//                $result = $this->solveMults($mults);
-//                array_push($adds, $operator, $result);
-            } elseif ($operator === '*') {
-                $op = new MultiplyOperation();
-                $op->setOperands($solved, $operand);
-                $solved = $op->solve($this->variables);
-            } elseif ($operator === '/') {
-                $op = new DivideOperation();
-                $op->setOperands($solved, $operand);
-                $solved = $op->solve($this->variables);
+                $exps = $this->parseMult($operand);
+                $result = $this->solveMults($exps);
+                array_push($mults, $operator, $result);
+            } else {
+                $solved = $this->solveOperation($operator, $solved, $operand);
             }
         }
         if ($this->containsOperations($solved)) {
@@ -145,25 +129,31 @@ class Formula implements Contracts\FormulaInterface
         }
     }
 
-    private function parseAdd(string $formula)
+    protected function solveOperation($operator, ...$operands)
     {
-        //Get lowest level first
-        $pattern = '/([\+\-]{1})/';
-        $parsed = preg_split($pattern, $formula, -1, $this->pregFlag);
-        return $parsed;
+        $op = new $this->operations[$operator];
+        $op->setOperands(...$operands);
+        return $op->solve($this->variables);
     }
 
-    private function parseMult(string $formula)
+    private function parseAdd($formula)
     {
-        //Get lowest level first
-        $pattern = '/([\*\/]{1})/';
-        $parsed = preg_split($pattern, $formula, -1, $this->pregFlag);
-        return $parsed;
+        return $this->parser->parseAdd($formula);
+    }
+
+    private function parseMult($formula)
+    {
+        return $this->parser->parseMult($formula);
+    }
+
+    private function parseExp($formula)
+    {
+        return $this->parser->parseExp($formula);
     }
 
     private function containsOperations(string $formula)
     {
-        foreach (['+', '-', '*', '/'] as $operator) {
+        foreach (array_keys($this->operations) as $operator) {
             if (strpos($formula, $operator) !== false) {
                 return true;
             }
@@ -173,9 +163,7 @@ class Formula implements Contracts\FormulaInterface
 
     private function cleanFormula(): string
     {
-
         $cleaned = str_replace(' ', '', $this->originalFormula);
         return $cleaned;
-
     }
 }

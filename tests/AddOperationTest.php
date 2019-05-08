@@ -14,7 +14,6 @@ use Aesonus\TestLib\BaseTestCase;
 
 class AddOperationTest extends BaseTestCase
 {
-
     public $testObj;
 
     protected function setUp(): void

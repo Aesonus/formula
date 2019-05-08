@@ -1,0 +1,14 @@
+{
+  "name": "formula",
+  "directories": {
+    "test": "tests"
+  },
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "Aesonus <corylcomposinger@gmail.com>",
+  "license": "MIT",
+  "devDependencies": {
+    "gulp": "^4.0.0"
+  }
+}

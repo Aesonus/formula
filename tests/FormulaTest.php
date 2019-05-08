@@ -20,7 +20,7 @@ class FormulaTest extends BaseTestCase
 
     protected function setUp() : void
     {
-        $this->testObj = new Formula;
+        $this->testObj = new Formula(new \Aesonus\Formula\FormulaParser());
     }
 
     /**
