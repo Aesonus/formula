@@ -41,7 +41,7 @@ class Formula implements FormulaInterface
 
     public function solveFormula(string $formula, array $variables = array()): ?float
     {
-        $this->variables = array_merge($variables, $this->variables);
+        $this->variables = array_merge($this->variables, $variables);
         $this->originalFormula = $formula;
         $clean_formula = $this->cleanFormula();
         //Get lowest level first
